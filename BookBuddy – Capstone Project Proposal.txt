@@ -1,0 +1,44 @@
+Capstone Project: BookBuddy – Book Discovery and Management Platform
+
+Tech Stack
+Front-end: React
+Back-end: Node.js with Express.js
+Database: PostgreSQL
+External API: Google Books API
+
+Focus
+BookBuddy will be a full-stack web application designed to help users discover, search, and manage books using the Google Books API. The front end will feature a clean and intuitive interface for browsing and organizing books, while the back end will handle user authentication, book list management, and data persistence using PostgreSQL.
+
+Type
+This project will be a responsive and interactive website.
+
+Goal
+The main goal is to build a platform that allows users to explore books by category, author, or title, view detailed descriptions pulled from the Google Books API, and save favorites to their personal reading list. Additional features may include tagging books as “read,” “want to read,” and rating them.
+
+Users
+The target audience includes students, casual readers, and book enthusiasts who want a central hub to manage and track books they’re interested in or currently reading. The design will prioritize ease of use and visual clarity.
+
+Data
+BookBuddy will fetch data from the Google Books API to populate book listings and descriptions. The PostgreSQL database will store user data, saved books, and reading statuses.
+
+Approach to Creating the Project
+The database will include tables for users, saved books, and book statuses. Book data from the API will be dynamically rendered but stored locally for users who wish to create a curated reading list. The app will feature CRUD operations for managing reading lists and use secure authentication (e.g., JWT). Challenges may include syncing API data with local data and handling rate limits or missing metadata from the API.
+
+Functionality
+Users can search and browse books, save favorites, mark books as read or unread, and view a personalized book list. A simple login system will enable persistent sessions. Admin or moderator functions may be considered for future expansion.
+
+Stretch Goals
+
+Notes and Reviews: Let users leave personal notes or reviews for each book.
+
+Share Lists: Allow users to share their reading lists publicly.
+
+Mobile Optimization: Fully responsive layout for mobile reading on the go.
+
+Dark Mode: User-friendly light/dark toggle feature.
+
+GitHub Repository
+A GitHub repo will be created to store the codebase, updates, and documentation.
+
+Mentor Approval
+This proposal will be submitted to the mentor for review, with feedback implemented before development begins.
