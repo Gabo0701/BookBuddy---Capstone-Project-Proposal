@@ -1,29 +1,93 @@
-# # BookBuddy – Capstone Project Proposal
-Capstone Project Proposal Project Instructions For this step, you'll write a proposal for the site you want to build. This will help your mentor better understand your chosen capstone project idea.
+# BookBuddy
 
-This proposal should be a 1-2 page document that answers the following questions:
+A comprehensive book-tracking and library-management web app. Users discover books via ** OpenLibrary **, save them to personal collections, track progress with quick logs, and opt into **email reminders** to build a consistent reading habit.
 
-What tech stack will you use for your final project? We recommend that you use React and Node for this project; however, if you are extremely interested in becoming a Python developer, you are welcome to use Python/Flask for this project.
+> **Stack:** React 19 + Vite • Node.js + Express • MongoDB Atlas + Mongoose • JWT Auth • Tailwind • Nodemailer + Mailtrap  
+> **Hosting:** Vercel (frontend) • Railway/Render (backend)
 
-Is the front-end UI or the back-end going to be the focus of your project? Or are you going to make an evenly focused full-stack application?
+---
 
-Will this be a website? A mobile app? Something else?
+## Goal & Users
+**Goal:** Provide a centralized, engaging way to discover, organize, and track reading—plus gentle email nudges to keep momentum.  
+**Primary users:** Individual readers (18–45) who read ~12+ books/year.  
+**Secondary users:** Students managing academic reading lists and book-club members.
 
-What goal will your project be designed to achieve?
+---
 
-What kind of users will visit your app? In other words, what is the demographic of your users?
+## Data Plan
+- **External source:** **Google Books API** (title, authors, ISBN, cover, description). Server-side proxy only—no API key in the browser.
+- **Local data:** User accounts; minimal book snapshot when saved; user-specific data (status, notes, rating, favorites, collections, reading logs).
 
-What data do you plan on using? How are you planning on collecting your data? You may not have picked your actual API yet, which is fine, just outline what kind of data you would like it to contain. You are welcome to create your own API and populate it with data. If you are using a Python/Flask stack, you are required to create your own API.
+---
 
-Outline Your Approach In brief, outline your approach to creating your project (knowing that you may not know everything in advance and that these details might change later).
+## Database Schema (brief)
+- **users**: `{ _id, email(unique), passwordHash, preferences, isVerified, createdAt }`
+- **books**: `{ _id, googleVolumeId(unique), isbn13?, title, authors[], coverUrl, description, apiSource:'google', createdAt }`
+- **userBooks**: `{ _id, userId→users, bookId→books, status:'saved'|'reading'|'finished', progress{ currentPage?, percent? }, rating?, notes?, collections:[String], favorite:Boolean, startedAt?, finishedAt?, updatedAt }`
+- **readingLogs**: `{ _id, userId, bookId, date, minutes?, pages?, note? }`  
+Indexes: unique on `books.googleVolumeId`; compound unique `{ userId, bookId }` on `userBooks`.
 
-Answer questions like the ones below, but feel free to add more information:
+---
 
-What does your database schema look like? What kinds of issues might you run into with your API? This is especially important if you are creating your own API, as web scraping produces notoriously messy data. Is there any sensitive information you need to secure? What functionality will your app include? What will the user flow look like? What features make your site more than a CRUD app? What are your stretch goals? Get Started Use this template to help get you started right away!
+## Key API Risks & Mitigations
+- **Rate limits (~1k/day)** → backend proxy with **short-TTL cache**; client **debounced** search; **pagination**.
+- **Missing/irregular fields** → normalization on the server; graceful UI fallbacks.
+- **Security of API key** → server-only calls; **CORS allowlist**, **Helmet**, **rate limiting**.
+- **Sessions** → **JWT access + refresh** with rotation/revocation.
 
-Description Stack: [Fill in your tech stack] Focus: [Front-end, back-end, or full-stack] Type: [Website, mobile app, etc.] Goal: [What will your project achieve?] Users: [Target demographic] Data: [Data source and collection method] GitHub Repository Please create a GitHub repository for this Capstone Project and label it accordingly. All code and further documentation associated with this project should be added to this repository.
+---
 
-Once you've added your proposal, please submit a link to your repository for your mentor to review. You may have to iterate on this submission several times before it is approved.
+## Security
+- **bcrypt** password hashing; **JWT** (access/refresh); **Joi** validation & sanitization.
+- **Helmet** headers, **CORS** (allowlisted FE origin), **rate limiting**, centralized error handler.
+- Secrets in **environment variables**; HTTPS in production.
+- **Email verification** and **password reset** (Mailtrap in dev).
 
-PAUSE: You will need a mentor's approval before moving on to the next step.
+---
 
+## Core Functionality (MVP)
+1. **Auth**: register → verify email (dev via Mailtrap) → login/logout → password reset.  
+2. **Search & Discover**: Google Books search (pagination, loading/empty states).  
+3. **Book Details**: normalized detail; **Add to Library**.  
+4. **Personal Library**: filters (status, favorites, collections); inline updates (status/progress/rating/notes).  
+5. **Reading Progress**: quick logs (minutes/pages) + visual indicator per book.  
+6. **Email Reminders**: opt-in daily/weekly “time to read” emails.  
+7. **Responsive UI**: mobile-first, accessible components.
+
+**Stretch (time-boxed):** Advanced filters (author/subject/min rating); shareable public pages; Collections 2.0 (reorderable, color tags); PWA install/offline; simple reading analytics.
+
+---
+
+## User Flow
+Landing → **Register/Login** → Dashboard → **Search** or **Library** → Book Detail → **Add** → Set **status/progress** → Logs accumulate → *(optional)* **reminders** → Finish book → **rate/review** → moves to **Completed**.
+
+---
+
+## Scope & Work Plan (≈ **50–60 hours**)
+- Setup & env (repo, Vite/Express, Tailwind) — **3h** *(Easy, Full-stack, Must)*
+- Schema & models — **2h** *(Medium, Backend, Must)*
+- Auth (register/login/JWT, verify/reset) — **8h** *(Hard, Backend, Must)*
+- Google Books proxy + cache — **4h** *(Medium, Backend, Must)*
+- Search UI (debounce, pagination, states) — **6h** *(Medium, Frontend, Must)*
+- Library management (add/remove, filters, notes/rating) — **8h** *(Medium, Full-stack, Must)*
+- Progress & logs (UI + endpoints) — **6h** *(Medium, Full-stack, Must)*
+- Email reminders (opt-in, schedule, templates) — **5h** *(Medium, Backend, Must)*
+- Responsive polish & a11y — **8h** *(Medium, Frontend, Must)*
+- Testing & deployment — **5h** *(Medium, Full-stack, Must)*  
+**Stretch:** Advanced filters **3h**; Social sharing **6h**.
+
+---
+
+## Quick Start
+**Prereqs:** Node 20+, MongoDB Atlas, Mailtrap account.
+
+**Backend**
+```bash
+cd server
+cp .env.example .env   # fill values below
+npm i
+npm run dev            # http://localhost:5000
+
+
+## Diagrams
+- [Flow Diagram (Architecture • User Flow • API flow)](docs/flow-diagram-bookbuddy.pdf)

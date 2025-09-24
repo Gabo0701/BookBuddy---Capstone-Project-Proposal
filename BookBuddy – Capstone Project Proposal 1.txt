@@ -1,0 +1,403 @@
+Table of Contents
+
+Features
+
+Screens & User Flow
+
+Tech Stack
+
+Architecture
+
+Data Model
+
+API Design
+
+Security
+
+Setup
+
+Environment Variables
+
+Running the App
+
+Testing
+
+Deployment
+
+Roadmap / Stretch Goals
+
+Diagrams
+
+License & Acknowledgments
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Features
+
+MVP
+
+🔐 Authentication: Register, email verification (dev via Mailtrap), login/logout, password reset.
+
+🔎 Search & Discover: Google Books search with pagination and loading/empty states.
+
+📖 Book Details: Rich detail view; add to library.
+
+🗂️ Personal Library: Custom collections; filters (status, favorites); inline updates to status, rating, notes.
+
+📈 Reading Progress: Quick logs (minutes/pages), visual progress indicator on each book.
+
+⏰ Email Reminders: Opt-in daily/weekly reminder (“Read 15 minutes today”)—dev via Mailtrap.
+
+📱 Responsive UI: Mobile-first, accessible components.
+
+Nice touches
+
+Optimistic updates for toggles/notes.
+
+Graceful fallbacks for missing covers/descriptions.
+
+Clean error states and retry affordances.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Screens & User Flow
+
+Flow: Landing → Register/Login → Dashboard → Search or Library → Book Detail → Add to Library → Set status/progress → Logs accumulate → (optional) email reminders → Finish book → Rate/review → moves to Completed.
+
+Primary screens
+
+Landing / Auth
+
+Search (list + pagination)
+
+Book Details
+
+Library (All, Reading, Finished, Favorites, Collections)
+
+Reading Log (per book)
+
+Settings (reminders, verification status)--
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Tech Stack
+
+Frontend: React 19, Vite, React Router, React Query, Tailwind CSS.
+
+Backend: Node.js, Express.js, Mongoose, Joi (validation), node-cron.
+
+Database: MongoDB Atlas.
+
+Email: Nodemailer + Mailtrap (development).
+
+Auth: JWT (access + refresh), bcrypt.
+
+Tooling: TypeScript (light), ESLint/Prettier, Vitest + React Testing Library (FE), Jest + SuperTest (BE).
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Architecture
+
+bookbuddy-capstone/
+├─ client/                  # React app (Vite)
+│  ├─ src/
+│  │  ├─ components/        # UI components
+│  │  ├─ pages/             # Route-level screens
+│  │  ├─ features/          # Library, Search, Auth slices
+│  │  ├─ hooks/             # React Query hooks, utilities
+│  │  ├─ services/          # API client (fetch wrapper)
+│  │  └─ main.tsx
+│  └─ index.html
+├─ server/                  # Express API
+│  ├─ src/
+│  │  ├─ config/            # env, db connection
+│  │  ├─ middleware/        # auth, errors, rate limit, helmet, cors
+│  │  ├─ models/            # Mongoose models
+│  │  ├─ routes/            # /auth, /books, /library, /logs
+│  │  ├─ controllers/       # route handlers
+│  │  ├─ services/          # Google Books proxy/cache, email
+│  │  └─ server.ts
+├─ docs/
+│  └─ technical_overview.txt
+├─ package.json             # optional root scripts for dev convenience
+└─ README.md
+
+------------------------------------------------------------------------------------------------------------------------------------
+Data flow
+
+Client calls Express endpoints (never calls Google Books directly).
+
+Server proxies Google Books, applies short-TTL cache, normalizes data, and persists minimal snapshots when a user saves a book.
+
+Auth handled via HTTP-only access/refresh tokens (or Authorization header depending on deployment).
+-------------------------------------------------------------------------------------------------------------------------------------
+Data Model
+
+users
+
+{ _id, email (unique), passwordHash, preferences, isVerified, createdAt }
+
+
+books (minimal snapshot when first saved)
+
+{ _id, googleVolumeId (unique), isbn13?, title, authors: string[], coverUrl, description, apiSource: 'google', createdAt }
+
+
+userBooks
+
+{
+  _id, userId (ref users), bookId (ref books),
+  status: 'saved' | 'reading' | 'finished',
+  progress?: { currentPage?: number, percent?: number },
+  rating?: number, notes?: string,
+  collections: string[], favorite: boolean,
+  startedAt?, finishedAt?, updatedAt
+}
+
+
+readingLogs
+
+{ _id, userId, bookId, date, minutes?: number, pages?: number, note?: string }
+
+
+Indexes
+
+books.googleVolumeId unique.
+
+Compound unique { userId, bookId } on userBooks.
+
+-------------------------------------------------------------------------------------------------------------------------
+
+API Design
+
+Base URL examples:
+
+Local: http://localhost:5000/api/v1
+
+Prod: https://<your-backend-host>/api/v1
+
+Auth
+
+POST /auth/register – email, password → verification email (Mailtrap in dev).
+
+POST /auth/login – returns access/refresh tokens.
+
+POST /auth/refresh – rotate and return new access token.
+
+POST /auth/logout – invalidate refresh token.
+
+POST /auth/forgot-password – email a reset link (dev via Mailtrap).
+
+POST /auth/reset-password – set new password.
+
+GET /auth/verify-email?token=... – verify account.
+
+Books (Google Books proxy)
+
+GET /books/search?q=harry+potter&startIndex=0&maxResults=20
+
+GET /books/:googleVolumeId – normalized detail.
+
+(Server caches responses with a short TTL; client uses React Query.)
+
+Library (user’s collection)
+
+GET /library – list with filters: ?status=reading&favorite=true
+
+POST /library – add: { googleVolumeId, initialStatus? }
+
+PATCH /library/:id – update status/progress/notes/rating/favorite
+
+DELETE /library/:id – remove from library
+
+Reading Logs
+
+GET /logs?bookId=...
+
+POST /logs – { bookId, date, minutes?, pages?, note? }
+
+DELETE /logs/:id
+
+Reminders (opt-in)
+
+PATCH /users/preferences – { reminders: { enabled: boolean, cadence: 'daily'|'weekly' } }
+
+node-cron job runs daily/weekly to send reminders (Nodemailer + Mailtrap in dev).
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+Security
+
+bcrypt hashing for passwords.
+
+JWT access + refresh with rotation; revoke on logout.
+
+Validation & sanitization with Joi.
+
+Helmet, CORS (allowlist FE origin), rate limiting, centralized error handler.
+
+Secrets in environment variables; HTTPS in production.
+
+Setup
+
+Prerequisites
+
+Node.js 20+
+
+MongoDB Atlas cluster (free tier is fine)
+
+Mailtrap account (free) for dev email testing
+
+Clone
+
+git clone https://github.com/<you>/bookbuddy-capstone.git
+cd bookbuddy-capstone
+
+
+Install
+
+# client
+cd client && npm i && cd ..
+# server
+cd server && npm i && cd ..
+
+------------------------------------------------------------------------------------------------------------------------
+
+Environment Variables
+
+Create .env files as shown.
+
+server/.env
+
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
+JWT_ACCESS_SECRET=replace_me
+JWT_REFRESH_SECRET=replace_me_too
+JWT_ACCESS_EXPIRES=15m
+JWT_REFRESH_EXPIRES=7d
+GOOGLE_BOOKS_API_KEY=your_key   # optional; many endpoints work without a key
+MAILTRAP_HOST=sandbox.smtp.mailtrap.io
+MAILTRAP_PORT=587
+MAILTRAP_USER=your_user
+MAILTRAP_PASS=your_pass
+APP_BASE_URL=http://localhost:5173
+
+
+client/.env
+
+VITE_API_BASE=http://localhost:5000/api/v1
+
+------------------------------------------------------------------------------------------------------------
+
+Running the App
+
+Backend
+
+cd server
+npm run dev         # nodemon server on :5000
+
+
+Frontend
+
+cd client
+npm run dev         # Vite on :5173
+
+
+(Optional) Root convenience scripts
+Add to root package.json if desired:
+
+{
+  "scripts": {
+    "dev": "concurrently \"npm:server\" \"npm:client\"",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "test": "npm -w server test && npm -w client test"
+  },
+  "devDependencies": { "concurrently": "^9.0.0" }
+}
+
+
+--------------------------------------------------------------------------------------------------------------------------
+Testing
+
+Backend
+
+cd server
+npm test           # Jest + SuperTest (route & service tests)
+
+
+Frontend
+
+cd client
+npm test           # Vitest + React Testing Library
+
+
+Recommended minimums:
+
+Auth controller tests (register/login/refresh).
+
+Books proxy service (search normalization, caching behavior).
+
+Library and logs endpoints (CRUD + validation).
+
+UI tests for Search, Library (filters), Book Detail actions.
+
+----------------------------------------------------------------------------------------------------------------
+
+Deployment
+
+Frontend (Vercel)
+
+Framework preset: Vite/React.
+
+VITE_API_BASE env points to your deployed backend.
+
+Backend (Railway or Render)
+
+Set PORT and env vars.
+
+Add a health check route (e.g., GET /api/v1/health).
+
+Ensure CORS allowlist includes your Vercel URL.
+
+Configure persistent MongoDB connection to Atlas.
+
+Roadmap / Stretch Goals
+
+Advanced search filters (author, subject, min rating).
+
+Shareable pages (public “Favorites” / “Recently finished”).
+
+Collections 2.0 (reorderable lists, color tags).
+
+PWA install + offline cache for library.
+
+Reading analytics (simple charts, weekly goal streaks).
+
+-------------------------------------------------------------------------------------------------------------
+
+Diagrams
+
+[Flow Diagram (Architecture • User Flow • API flow)](flow-diagram-bookbuddy.pdf)
+
+
+---------------------------------------------------------------------------------------------------------------
+
+License & Acknowledgments
+
+License: MIT (you can replace with your preferred license).
+APIs & Services: Google Books API, Mailtrap (dev email).
+Thanks: Mentors and reviewers for guidance and feedback.
+
+Quick Start (TL;DR)
+# backend
+cd server && cp .env.example .env   # create .env from the values above
+npm i && npm run dev
+
+# frontend
+cd ../client && cp .env.example .env
+npm i && npm run dev
+
+
+You’re set! Log in, search a book, add it to your library, and enable reminders.
